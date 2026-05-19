@@ -1,0 +1,25 @@
+node_modules/
+
+# PM2 로그 (디렉토리는 .gitkeep으로 유지)
+logs/
+!logs/.gitkeep
+
+# 회의별 임시 작업 공간 (PCM/MP3)
+tmp/
+!tmp/.gitkeep
+
+# 환경 변수
+.env
+.env.local
+.env.production
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 에디터
+*.swp
+*.swo
+.vscode/
+.idea/
