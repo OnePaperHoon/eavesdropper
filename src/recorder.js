@@ -46,9 +46,17 @@ function onSpeakingStart(session, guild, userId) {
       displayName,
       segments: [],     // [{startMs, durationMs, pcmPath}]
       _segIndex: 0,
+      _activeStream: false,   // 동시 다중 subscribe 가드
     });
   }
   const sp = session.speakerSegments.get(userId);
+
+  // 같은 사용자가 이미 active stream을 갖고 있으면 새로 subscribe하지 않음.
+  // Discord의 speaking.start가 짧은 침묵 후 재발화 시 또 fire될 수 있어
+  // 첫 stream이 silence 임계 대기 중일 때 두 stream이 공존 → 같은 PCM 중복 발생.
+  if (sp._activeStream) return;
+  sp._activeStream = true;
+
   const segIndex = sp._segIndex++;
 
   // 발화 1건당 새 파일 (append 모드 X)
@@ -102,6 +110,8 @@ function onSpeakingStart(session, guild, userId) {
           const durationMs = Math.round((bytesWritten / BYTES_PER_SEC_48K_STEREO) * 1000);
           sp.segments.push({ startMs, durationMs, pcmPath });
         }
+        // active stream 해제 — 다음 발화가 새로 subscribe 가능
+        sp._activeStream = false;
         resolve();
       });
     };
