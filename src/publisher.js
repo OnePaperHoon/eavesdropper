@@ -7,6 +7,14 @@ const TRANSCRIPT_CHANNEL = process.env.DISCORD_TRANSCRIPT_CHANNEL_ID;
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+function fmtDurationShort(seconds) {
+  const total = Math.max(0, Math.floor(seconds));
+  if (total < 60) return `${total}s`;
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return s === 0 ? `${m}m` : `${m}m${s}s`;
+}
+
 function makeThreadName(summary, meeting) {
   const d = new Date(meeting.startedAt);
   const mm = pad2(d.getUTCMonth() + 1);
@@ -92,26 +100,35 @@ export async function publishMeeting({
     );
   }
 
-  // 1) starter 메시지 — 요약 Embed + transcript .txt 첨부
+  // 1) starter 메시지 — 부모 채널 노이즈 최소화. 한 줄 메타만.
+  //    본문(요약 Embed + transcript + MP3)은 모두 쓰레드 안으로.
+  const threadName = makeThreadName(summary, meeting);
+  const speakerNames = speakers.map((s) => s.displayName).join(', ');
+  const starterContent =
+    `🎙️ **회의록 게시** · ${speakerNames} · ${fmtDurationShort(meeting.durationSeconds)} ` +
+    `· <#${TRANSCRIPT_CHANNEL}> 아래 스레드에 transcript와 MP3가 첨부됩니다.`;
+
+  const starterMsg = await channel.send({ content: starterContent });
+
+  // 2) 쓰레드 생성
+  const thread = await starterMsg.startThread({
+    name: threadName,
+    autoArchiveDuration: 10080,  // 7 days
+  });
+
+  // 3) 쓰레드 안에 요약 Embed + transcript .txt
   const embed = buildSummaryEmbed(summary, meeting, speakers);
   const transcriptBuf = Buffer.from(transcriptText, 'utf8');
   const transcriptAttachment = new AttachmentBuilder(transcriptBuf, {
     name: `transcript_${session.meetingId}.txt`,
   });
 
-  const starterMsg = await channel.send({
+  await thread.send({
     embeds: [embed],
     files: [transcriptAttachment],
   });
 
-  // 2) 쓰레드 생성 (starter message에서)
-  const threadName = makeThreadName(summary, meeting);
-  const thread = await starterMsg.startThread({
-    name: threadName,
-    autoArchiveDuration: 10080,  // 7 days
-  });
-
-  // 3) MP3 part 첨부 — 한 part = 한 메시지 (Discord 25MB/첨부 한도 안전)
+  // 4) MP3 part 첨부 — 한 part = 한 메시지 (Discord 25MB/첨부 한도 안전)
   const partRows = [];
   for (let i = 0; i < mp3Parts.length; i++) {
     const part = mp3Parts[i];
