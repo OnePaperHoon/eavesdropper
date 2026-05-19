@@ -8,6 +8,7 @@ import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { ensureDeps } from './_ensure-deps.js';
+import { promptDatabaseUrl } from './_db-url-prompt.js';
 
 // 외부 패키지 import 전에 의존성 가드 — 없으면 친절한 안내 후 종료.
 ensureDeps();
@@ -79,7 +80,7 @@ const ENV_SECTIONS = [
   {
     label: 'PostgreSQL (threads-make와 별도 인스턴스)',
     vars: [
-      { key: 'DATABASE_URL', label: 'postgres://user:pw@host:5432/eavesdropper', secret: true },
+      { key: 'DATABASE_URL', label: '연결 정보 (host/port/db/user/password 5필드 분리 입력)', secret: true },
     ],
   },
   {
@@ -121,10 +122,17 @@ async function handleEnvEdit() {
   }));
 
   const varDef = section.vars.find((v) => v.key === varKey);
-  const newValue = ifCancel(await (varDef.secret ? p.password : p.text)({
-    message: `${varDef.label} 새 값`,
-    placeholder: readEnvKey(varKey),
-  }));
+
+  let newValue;
+  if (varKey === 'DATABASE_URL') {
+    // 특수 처리: 5필드 분리 입력 + 자동 조립 (한 줄 connection string은 실수 빈발)
+    newValue = await promptDatabaseUrl(p, ifCancel, readEnvKey(varKey));
+  } else {
+    newValue = ifCancel(await (varDef.secret ? p.password : p.text)({
+      message: `${varDef.label} 새 값`,
+      placeholder: readEnvKey(varKey),
+    }));
+  }
 
   writeEnvKey(varKey, newValue);
   p.note(`✅ ${varKey} 저장 완료`);

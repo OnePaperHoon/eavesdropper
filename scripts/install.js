@@ -8,6 +8,7 @@ import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { ensureDeps } from './_ensure-deps.js';
+import { promptDatabaseUrl } from './_db-url-prompt.js';
 
 // 외부 패키지 import 전에 의존성 가드.
 ensureDeps();
@@ -78,14 +79,25 @@ async function main() {
   // 필수 항목 입력
   for (const v of REQUIRED_VARS) {
     const current = readEnvKey(v.key);
-    if (current && current.trim() && !current.includes('<')) {
+    const looksValid = current
+      && current.trim()
+      && !current.includes('<')
+      && (v.key !== 'DATABASE_URL' || /^postgres(ql)?:\/\/.+@.+/.test(current));
+
+    if (looksValid) {
       p.note(`✓ ${v.label} 이미 설정됨`);
       continue;
     }
-    const value = ifCancel(await (v.secret ? p.password : p.text)({
-      message: `${v.label} 입력`,
-      placeholder: current,
-    }));
+
+    let value;
+    if (v.key === 'DATABASE_URL') {
+      value = await promptDatabaseUrl(p, ifCancel, current);
+    } else {
+      value = ifCancel(await (v.secret ? p.password : p.text)({
+        message: `${v.label} 입력`,
+        placeholder: current,
+      }));
+    }
     writeEnvKey(v.key, value);
   }
 
