@@ -3,11 +3,16 @@
  * 초기 셋업 TUI — `.env` 빈 값 항목들을 인터랙티브로 채우고
  * migrate + 슬래시 명령 등록까지 자동 수행.
  */
-import * as p from '@clack/prompts';
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { ensureDeps } from './_ensure-deps.js';
+
+// 외부 패키지 import 전에 의존성 가드.
+ensureDeps();
+
+const p = await import('@clack/prompts');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');

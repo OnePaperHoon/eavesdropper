@@ -3,11 +3,17 @@
  * eavesdropper 통합 CLI — `npm run cli`
  * threads-make의 scripts/cli.js 패턴 차용 (별개 프로젝트, 코드만 복사).
  */
-import * as p from '@clack/prompts';
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { ensureDeps } from './_ensure-deps.js';
+
+// 외부 패키지 import 전에 의존성 가드 — 없으면 친절한 안내 후 종료.
+ensureDeps();
+
+// dynamic import: 가드 통과한 다음에만 평가됨.
+const p = await import('@clack/prompts');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');

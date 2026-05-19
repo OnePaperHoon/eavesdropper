@@ -148,7 +148,7 @@ scripts/cli.js, install.js, test-record.js
 - **OpenAI 요약 응답 파싱 실패** — `json_schema strict`로 스키마 위반은 거의 0. 네트워크/타임아웃 시 `summarizer.js` fallback 발동 → `thread_title=null`이라 publisher가 `[MM-DD HH:MM] 회의록 — <호출자>` 형식 사용.
 - **voice receive 끊김** — `@discordjs/voice`의 비공식 기능. 봇 부팅 시 stale tmp + stuck row 자동 청소 → 죽었다 살아도 안전.
 - **ffmpeg 필터 호환성** — Pi5 표준 빌드 OK. 다른 환경은 `amix`/`adelay`/`apad` 동작 확인.
-- **`@discordjs/opus` native 빌드 실패** — `python3`, `make`, `g++` 필요. 실패 시 `prism-media` 단독으로 fallback 가능 (현재는 둘 다 의존).
+- **`@discordjs/opus` native 빌드 실패 (특히 ARM64 Pi5 + Node 22)** — `celt_inner_prod_neon` 등 NEON intrinsics 빌드 에러로 알려진 라이브러리 자체 버그. 본 프로젝트는 `@discordjs/opus`를 `optionalDependencies`로 두고 `opusscript`(pure JS) fallback에 의존하므로 **빌드가 실패해도 install이 계속 진행되고 봇 동작에 문제 없음**. prism-media가 다음 우선순위로 자동 선택: `@discordjs/opus` → `mediaplex` → `node-opus` → `opusscript`. 향후 mediaplex prebuilt가 안정되면 dependency 추가 검토.
 - **PM2 ecosystem.config 오류** — `package.json`에 `"type":"module"` 있으므로 반드시 `.cjs` 확장자.
 
 ---

@@ -26,13 +26,16 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.3.0",
-    "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.19.2",
     "discord.js": "^14.18.0",
     "dotenv": "^16.5.0",
     "openai": "^4.98.0",
+    "opusscript": "^0.0.8",
     "pg": "^8.14.1",
     "prism-media": "^1.3.5"
+  },
+  "optionalDependencies": {
+    "@discordjs/opus": "^0.10.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
@@ -102,7 +105,7 @@ psql -h <eavesdropper-pg-host> -p <port> -U eavesdropper_user \
 npm install                                                        # 의존성 설치
 ```
 
-`@discordjs/opus`는 native 컴파일 필요 — Pi5/리눅스에서 `python3`, `make`, `g++` 설치 안 되어 있으면 실패. 실패 시 `prism-media` 단독 + `opusscript` fallback 가능(SPEC §3 OpusDecoder는 prism-media에 내장이라 `@discordjs/opus`는 권장이지 필수는 아님).
+`@discordjs/opus`는 `optionalDependencies`로 격리되어 있어 native 빌드가 실패해도 install이 계속 진행된다. 실패 시 `prism-media`가 자동으로 `opusscript`(pure JS) fallback. ARM64 Pi5 + Node 22 환경에서는 `@discordjs/opus@0.10.0`이 NEON intrinsics 버그로 빌드 실패가 알려진 이슈 — 무시하고 진행해도 봇은 정상 동작.
 
 ## 검수 기준
 

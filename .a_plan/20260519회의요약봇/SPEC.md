@@ -278,7 +278,8 @@ CREATE TABLE meeting_audio_parts (
 
 - **Runtime**: Node.js 22+, ESM (`"type": "module"`)
 - **Discord**: `discord.js` v14 + `@discordjs/voice` (voice receive 포함)
-- **Opus → PCM 디코딩**: `prism-media` (OpusDecoder)
+- **Opus → PCM 디코딩**: `prism-media` (OpusDecoder) + opus 백엔드는 prism-media 자동 fallback 체인 (`@discordjs/opus` optional → `opusscript` pure JS)
+  - 이유: `@discordjs/opus@0.10.0`이 Node 22 ARM64에서 NEON intrinsics 빌드 실패하는 알려진 이슈. `optionalDependencies`로 두어 빌드 실패해도 install 진행, 자동으로 `opusscript`로 위임
 - **VAD**: **별도 라이브러리 없음** — `@discordjs/voice`의 `EndBehaviorType.AfterSilence` 내장 옵션 사용
 - **오디오 처리 (concat, mix, 분할, MP3 인코딩)**: `ffmpeg` (시스템 의존성) + spawn 직접 호출 (또는 얇은 wrapper)
 - **STT + 요약 LLM**: `openai` SDK 단일 (Whisper API `verbose_json` + Chat Completions `json_schema strict`로 `gpt-4o-mini` 요약) — ADR-5
@@ -497,7 +498,7 @@ threads-make 규칙 차용:
 
 본 SPEC 합의 후 다음 산출물 예정 (이번 인터뷰·ADR 범위 외):
 
-1. `package.json` + 의존성 (`discord.js`, `@discordjs/voice`, `@discordjs/opus`, `prism-media`, `openai`, `pg`, `@clack/prompts`) — ADR-5에 따라 `@anthropic-ai/sdk` 제외
+1. `package.json` + 의존성 (`discord.js`, `@discordjs/voice`, `prism-media`, `opusscript`, `openai`, `pg`, `@clack/prompts`) — ADR-5에 따라 `@anthropic-ai/sdk` 제외, `@discordjs/opus`는 ARM64 빌드 이슈로 `optionalDependencies`로 격리
 2. `CLAUDE.md` 작성 (threads-make 스타일)
 3. `migrations/001_init.sql` 작성 (3-테이블)
 4. PoC: `/join` → 단일 사용자 음성 1분 캡처 → ffmpeg concat → Whisper 1회 → `/leave` → 로컬 transcript 출력
