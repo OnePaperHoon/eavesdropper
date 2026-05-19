@@ -40,7 +40,7 @@ eavesdropper/
 eavesdropper/
 ├── .env / .env.example
 ├── package.json (ESM, Node 22+)
-├── ecosystem.config.cjs (PM2 단일 앱 'notesbot')
+├── ecosystem.config.cjs (PM2 단일 앱 'eavesdropper')
 ├── CLAUDE.md
 ├── prompts/summary.txt
 ├── src/
@@ -65,7 +65,7 @@ eavesdropper/
 └── logs/                   (PM2 로그)
 ```
 
-- PM2 `notesbot` 상시 실행
+- PM2 `eavesdropper` 상시 실행
 - 새 PostgreSQL DB `eavesdropper` (threads-make와 별개)
 - Discord Developer Portal에 신규 봇 등록 + 토큰 발급
 

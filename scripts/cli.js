@@ -194,7 +194,7 @@ async function handleUpdate() {
   run('npm', ['install']);
   run('npm', ['run', 'db:migrate']);
   run('npm', ['run', 'discord:register-commands']);
-  run('pm2', ['restart', 'notesbot']);
+  run('pm2', ['restart', 'eavesdropper']);
   p.note('✅ 업데이트 적용 완료');
 }
 
@@ -204,10 +204,10 @@ async function handlePm2() {
     options: [
       { value: 'status',  label: 'status (현재 프로세스 상태 확인)' },
       { value: 'start',   label: 'start (ecosystem.config.cjs)' },
-      { value: 'restart', label: 'restart notesbot' },
-      { value: 'stop',    label: 'stop notesbot' },
-      { value: 'delete',  label: 'delete notesbot' },
-      { value: 'logs',    label: 'logs notesbot (Ctrl+C로 빠져나오기)' },
+      { value: 'restart', label: 'restart eavesdropper' },
+      { value: 'stop',    label: 'stop eavesdropper' },
+      { value: 'delete',  label: 'delete eavesdropper' },
+      { value: 'logs',    label: 'logs eavesdropper (Ctrl+C로 빠져나오기)' },
       { value: 'save',    label: 'save & startup (부팅 자동시작 등록)' },
       { value: 'back',    label: '◀ 뒤로' },
     ],
@@ -215,10 +215,10 @@ async function handlePm2() {
 
   if (action === 'status')  run('pm2', ['status']);
   if (action === 'start')   run('pm2', ['start', 'ecosystem.config.cjs']);
-  if (action === 'restart') run('pm2', ['restart', 'notesbot']);
-  if (action === 'stop')    run('pm2', ['stop', 'notesbot']);
-  if (action === 'delete')  run('pm2', ['delete', 'notesbot']);
-  if (action === 'logs')    run('pm2', ['logs', 'notesbot']);
+  if (action === 'restart') run('pm2', ['restart', 'eavesdropper']);
+  if (action === 'stop')    run('pm2', ['stop', 'eavesdropper']);
+  if (action === 'delete')  run('pm2', ['delete', 'eavesdropper']);
+  if (action === 'logs')    run('pm2', ['logs', 'eavesdropper']);
   if (action === 'save') {
     run('pm2', ['save']);
     run('pm2', ['startup']);

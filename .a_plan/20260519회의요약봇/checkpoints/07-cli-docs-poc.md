@@ -72,11 +72,11 @@ const ENV_SECTIONS = [
    - reset (`DROP SCHEMA public CASCADE; CREATE SCHEMA public;` 확인 후)
    - stuck 회의 청소 — 1시간+ status='recording'|'transcribing'|'summarizing' 인 row를 `failed`로 (부팅 시에도 자동)
 5. **🤖 Discord 명령 재등록** → `npm run discord:register-commands`
-6. **📦 업데이트 적용** → `git pull` + `npm install` + `db:migrate` + `discord:register-commands` + `pm2 restart notesbot`
+6. **📦 업데이트 적용** → `git pull` + `npm install` + `db:migrate` + `discord:register-commands` + `pm2 restart eavesdropper`
 7. **🎛️ PM2 운영**
    - start (`pm2 start ecosystem.config.cjs`)
-   - restart / stop / delete (`pm2 [cmd] notesbot`)
-   - logs (`pm2 logs notesbot`)
+   - restart / stop / delete (`pm2 [cmd] eavesdropper`)
+   - logs (`pm2 logs eavesdropper`)
    - save & startup (raspberry pi 부팅 자동시작)
 8. **🧪 테스트** → `npm run test:record`
 9. **🚪 종료**

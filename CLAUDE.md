@@ -69,7 +69,7 @@ recorder.stopRecording
 - `openai` SDK (Whisper API + Chat Completions `json_schema strict`)
 - `pg` (PostgreSQL 18)
 - `@clack/prompts` (CLI)
-- PM2 (`ecosystem.config.cjs`, 앱 이름 `notesbot`)
+- PM2 (`ecosystem.config.cjs`, 앱 이름 `eavesdropper`)
 
 ---
 
@@ -105,7 +105,7 @@ npm run dev                          # nodemon
 npm run test:record                  # 로컬 audio-pipeline + transcript-builder 시뮬레이션
 ```
 
-> PM2를 직접 다루어야 하는 경우(예: 다른 앱 통합 점검)에도 본 프로젝트의 `notesbot` 프로세스에 대한 start/restart/stop/delete/logs/status/save·startup은 반드시 `npm run cli → 🎛️ PM2 운영`을 통해서 수행. raw `pm2 ...` 명령은 다른 프로젝트의 프로세스에 한해 사용.
+> PM2를 직접 다루어야 하는 경우(예: 다른 앱 통합 점검)에도 본 프로젝트의 `eavesdropper` 프로세스에 대한 start/restart/stop/delete/logs/status/save·startup은 반드시 `npm run cli → 🎛️ PM2 운영`을 통해서 수행. raw `pm2 ...` 명령은 다른 프로젝트의 프로세스에 한해 사용.
 
 ---
 

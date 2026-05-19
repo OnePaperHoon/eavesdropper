@@ -298,7 +298,7 @@ eavesdropper/
 ├── README.md
 ├── CLAUDE.md                       # 이 SPEC 기반 작성 예정
 ├── package.json                    # type=module
-├── ecosystem.config.cjs            # PM2 (notesbot)
+├── ecosystem.config.cjs            # PM2 (eavesdropper)
 ├── .env.example
 ├── prompts/
 │   └── summary.txt                 # OpenAI 요약 system 프롬프트 (변수 치환식, CLI에서 편집 가능)
@@ -459,7 +459,7 @@ threads-make 규칙 차용:
 | 사후 일괄 파이프라인 패턴 | `src/marketing-pipeline.js`, `src/replies-sync.js` | `/leave` 후 일괄 처리에 동일 멘탈 모델 적용 |
 | OpenAI Chat Completions 호출 패턴 | threads-make는 Anthropic SDK 사용하지만 SDK 호출 골격은 동일 — eavesdropper는 `openai` SDK + `json_schema strict` 적용 |
 | PG migration 자동 적용 | `migrations/migrate.js` | 동일 |
-| PM2 ecosystem | `ecosystem.config.cjs` | 앱 1개(`notesbot`)로 단순화 |
+| PM2 ecosystem | `ecosystem.config.cjs` | 앱 1개(`eavesdropper`)로 단순화 |
 | .env 섹션 정의 + 편집 | `scripts/cli.js` `ENV_SECTIONS` | 회의록용 키로 교체 |
 | 환경변수 4곳 동기화 규칙 | threads-make `CLAUDE.md` 절대규칙 #8 | 동일 적용 |
 | 사용자 대면 메시지 한국어 | 전반 | 동일 |

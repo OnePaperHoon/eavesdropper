@@ -69,7 +69,7 @@ SPEC §5의 환경변수 블록 그대로 복사 + 모든 값은 빈 문자열.
 module.exports = {
   apps: [
     {
-      name: 'notesbot',
+      name: 'eavesdropper',
       script: 'src/bot.js',
       interpreter: 'node',
       watch: false,

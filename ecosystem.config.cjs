@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'notesbot',
+      name: 'eavesdropper',
       script: 'src/bot.js',
       interpreter: 'node',
       watch: false,
