@@ -2,7 +2,11 @@ import { join as pjoin } from 'path';
 import { rmSync } from 'fs';
 import { query } from './db.js';
 import { stopRecording } from './recorder.js';
-import { buildSpeakerMp3, buildMixedMp3Parts } from './audio-pipeline.js';
+import {
+  buildSpeakerMonoPcm,
+  buildSpeakerMp3FromMonoPcm,
+  buildMixedMp3Parts,
+} from './audio-pipeline.js';
 import { transcribeSpeakerMp3 } from './stt-whisper.js';
 import { mergeAcrossSpeakers, formatTranscript } from './transcript-builder.js';
 import { summarizeTranscript } from './summarizer.js';
@@ -38,29 +42,40 @@ export async function finalizeMeeting(client, session, triggeredBy) {
     const totalDurationMs = endedAt.getTime() - startedAtMs;
     const durationSec = Math.max(0, Math.floor(totalDurationMs / 1000));
 
-    // 화자별 MP3 생성 + Whisper STT
+    // 화자별 mono PCM concat → MP3 → Whisper STT
     const speakerInputs = [];
     for (const [userId, sp] of session.speakerSegments.entries()) {
       if (!sp.segments || sp.segments.length === 0) continue;
+
+      const monoPcmPath = pjoin(tmpDir, `speaker_${userId}.mono.pcm`);
       const mp3Path = pjoin(tmpDir, `speaker_${userId}.mp3`);
+
       try {
-        await buildSpeakerMp3({
-          pcmPath: sp.pcmPath,
+        // 1) 화자의 발화별 raw PCM들 → 단일 16kHz mono raw PCM (ffmpeg concat filter)
+        await buildSpeakerMonoPcm({
           segments: sp.segments,
-          totalDurationMs,
+          outMonoPcmPath: monoPcmPath,
+        });
+        // 2) mono PCM → Whisper용 32kbps mono MP3 (인코딩 1회)
+        await buildSpeakerMp3FromMonoPcm({
+          monoPcmPath,
           outMp3Path: mp3Path,
         });
       } catch (err) {
-        console.warn(`buildSpeakerMp3 실패 (user=${userId}):`, err.message);
+        console.warn(`buildSpeaker* 실패 (user=${userId}):`, err.message);
         continue;
       }
+
       const whisperSegments = await transcribeSpeakerMp3(mp3Path);
+      const firstStartMs = sp.segments[0]?.startMs ?? 0;
+
       speakerInputs.push({
         userId,
         displayName: sp.displayName,
         segments: sp.segments,
         whisperSegments,
-        pcmPath: sp.pcmPath,
+        monoPcmPath,
+        firstStartMs,
       });
     }
 
@@ -86,13 +101,13 @@ export async function finalizeMeeting(client, session, triggeredBy) {
       partBoundariesSec,
     });
 
-    // mix MP3 part 생성
+    // mix MP3 part 생성 — 위에서 만든 화자별 mono PCM을 재사용 (이중 인코딩 회피)
     let mp3Parts = [];
     try {
       mp3Parts = await buildMixedMp3Parts({
         speakerInputs: speakerInputs.map((sp) => ({
-          pcmPath: sp.pcmPath,
-          segments: sp.segments,
+          monoPcmPath: sp.monoPcmPath,
+          firstStartMs: sp.firstStartMs,
         })),
         totalDurationMs,
         outDir: tmpDir,
