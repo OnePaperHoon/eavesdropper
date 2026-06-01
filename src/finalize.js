@@ -5,6 +5,7 @@ import { stopRecording } from './recorder.js';
 import {
   buildSpeakerMonoPcm,
   buildSpeakerMp3FromMonoPcm,
+  buildSpeakerTimelinePcm,
   buildMixedMp3Parts,
 } from './audio-pipeline.js';
 import { transcribeSpeakerMp3 } from './stt-whisper.js';
@@ -49,17 +50,24 @@ export async function finalizeMeeting(client, session, triggeredBy) {
 
       const monoPcmPath = pjoin(tmpDir, `speaker_${userId}.mono.pcm`);
       const mp3Path = pjoin(tmpDir, `speaker_${userId}.mp3`);
+      const timelinePcmPath = pjoin(tmpDir, `speaker_${userId}.timeline.pcm`);
 
       try {
-        // 1) 화자의 발화별 raw PCM들 → 단일 16kHz mono raw PCM (ffmpeg concat filter)
+        // 1) compact mono PCM (Whisper용) — 발화만 이어붙임
         await buildSpeakerMonoPcm({
           segments: sp.segments,
           outMonoPcmPath: monoPcmPath,
         });
-        // 2) mono PCM → Whisper용 32kbps mono MP3 (인코딩 1회)
+        // 2) compact mono PCM → Whisper용 32kbps mono MP3
         await buildSpeakerMp3FromMonoPcm({
           monoPcmPath,
           outMp3Path: mp3Path,
+        });
+        // 3) timeline-accurate mono PCM (mix용) — 발화 사이 무음 포함, 실제 회의 시간 일치
+        await buildSpeakerTimelinePcm({
+          segments: sp.segments,
+          totalDurationMs,
+          outTimelinePcmPath: timelinePcmPath,
         });
       } catch (err) {
         console.warn(`buildSpeaker* 실패 (user=${userId}):`, err.message);
@@ -67,7 +75,6 @@ export async function finalizeMeeting(client, session, triggeredBy) {
       }
 
       const whisperSegments = await transcribeSpeakerMp3(mp3Path);
-      const firstStartMs = sp.segments[0]?.startMs ?? 0;
 
       speakerInputs.push({
         userId,
@@ -75,7 +82,7 @@ export async function finalizeMeeting(client, session, triggeredBy) {
         segments: sp.segments,
         whisperSegments,
         monoPcmPath,
-        firstStartMs,
+        timelinePcmPath,
       });
     }
 
@@ -101,13 +108,12 @@ export async function finalizeMeeting(client, session, triggeredBy) {
       partBoundariesSec,
     });
 
-    // mix MP3 part 생성 — 위에서 만든 화자별 mono PCM을 재사용 (이중 인코딩 회피)
+    // mix MP3 part 생성 — 화자별 timeline-accurate PCM을 amix (실제 회의 시간 보존)
     let mp3Parts = [];
     try {
       mp3Parts = await buildMixedMp3Parts({
         speakerInputs: speakerInputs.map((sp) => ({
-          monoPcmPath: sp.monoPcmPath,
-          firstStartMs: sp.firstStartMs,
+          timelinePcmPath: sp.timelinePcmPath,
         })),
         totalDurationMs,
         outDir: tmpDir,

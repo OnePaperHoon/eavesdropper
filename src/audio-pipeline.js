@@ -79,44 +79,84 @@ export async function buildSpeakerMp3FromMonoPcm({ monoPcmPath, outMp3Path }) {
 }
 
 /**
- * 화자별 mono PCM 트랙들을 첫 발화 시점만큼 adelay → amix → 30분 분할 MP3.
+ * 화자의 발화별 raw PCM들을 각 segment의 절대 startMs 위치에 배치(adelay+amix)하여
+ * 실제 회의 timeline을 보존한 16kHz mono raw PCM 생성. 발화 사이 무음 포함.
  *
- * 주의: 현재 1차 구현은 화자 트랙 내부에서 발화 사이 무음을 padding하지 않으므로
- * mix MP3의 후속 발화 시점은 실제 회의보다 빠르게 등장할 수 있다 (시간 압축).
- * transcript의 timeline은 별도 segments 메타로 정확히 매핑되므로 영향 없음.
+ * mix MP3 입력 전용. Whisper STT 입력에는 buildSpeakerMonoPcm(compact)를 사용한다 —
+ * 무음 포함 audio는 Whisper 비용 증가 + 무음 구간 hallucination 위험.
  *
  * @param {object} opts
- * @param {Array<{monoPcmPath:string, firstStartMs:number}>} opts.speakerInputs
+ * @param {Array<{startMs:number, durationMs:number, pcmPath:string}>} opts.segments
+ * @param {number} opts.totalDurationMs  회의 전체 길이 (apad+atrim 기준)
+ * @param {string} opts.outTimelinePcmPath  16kHz mono s16le PCM
+ */
+export async function buildSpeakerTimelinePcm({ segments, totalDurationMs, outTimelinePcmPath }) {
+  if (!segments?.length) throw new Error('buildSpeakerTimelinePcm: segments 비어있음');
+
+  const valid = segments.filter(
+    (s) => existsSync(s.pcmPath) && statSync(s.pcmPath).size > 0,
+  );
+  if (valid.length === 0) throw new Error('buildSpeakerTimelinePcm: 유효 segment 0');
+
+  const totalSec = Math.max(1, Math.ceil(totalDurationMs / 1000));
+
+  const inputArgs = [];
+  const filterChunks = [];
+  valid.forEach((seg, idx) => {
+    inputArgs.push('-f', 's16le', '-ar', '48000', '-ac', '2', '-i', seg.pcmPath);
+    const delay = Math.max(0, Math.floor(seg.startMs || 0));
+    filterChunks.push(
+      `[${idx}:a]aformat=channel_layouts=mono,aresample=16000,adelay=${delay}|${delay}[s${idx}]`,
+    );
+  });
+  const mixIn = valid.map((_, i) => `[s${i}]`).join('');
+  filterChunks.push(
+    `${mixIn}amix=inputs=${valid.length}:normalize=0:dropout_transition=0,` +
+      `apad,atrim=duration=${totalSec}[out]`,
+  );
+
+  await runFfmpeg([
+    ...inputArgs,
+    '-filter_complex', filterChunks.join(';'),
+    '-map', '[out]',
+    '-f', 's16le',
+    '-ar', '16000',
+    '-ac', '1',
+    outTimelinePcmPath,
+  ], 'speaker timeline pcm');
+}
+
+/**
+ * 화자별 timeline-accurate mono PCM(buildSpeakerTimelinePcm 출력)들을 amix → 30분 분할 MP3.
+ * 입력 PCM이 이미 실제 회의 timeline을 가지므로 추가 delay 불필요 — mix 시간 = 실제 회의 시간.
+ *
+ * @param {object} opts
+ * @param {Array<{timelinePcmPath:string}>} opts.speakerInputs
  * @param {number} opts.totalDurationMs
  * @param {string} opts.outDir
  * @returns {Promise<Array<{path:string, partIndex:number, durationSec:number}>>}
  */
 export async function buildMixedMp3Parts({ speakerInputs, totalDurationMs, outDir }) {
   const valid = speakerInputs.filter(
-    (sp) => sp.monoPcmPath && existsSync(sp.monoPcmPath) && statSync(sp.monoPcmPath).size > 0,
+    (sp) => sp.timelinePcmPath && existsSync(sp.timelinePcmPath) && statSync(sp.timelinePcmPath).size > 0,
   );
   if (valid.length === 0) return [];
 
   const totalSec = Math.max(1, Math.ceil(totalDurationMs / 1000));
 
-  // 화자별 16kHz mono input + 첫 발화 startMs로 adelay → amix
   const inputArgs = [];
-  const filterChunks = [];
-  valid.forEach((sp, idx) => {
-    inputArgs.push('-f', 's16le', '-ar', '16000', '-ac', '1', '-i', sp.monoPcmPath);
-    const delay = Math.max(0, Math.floor(sp.firstStartMs || 0));
-    filterChunks.push(`[${idx}:a]adelay=${delay}|${delay}[a${idx}]`);
+  valid.forEach((sp) => {
+    inputArgs.push('-f', 's16le', '-ar', '16000', '-ac', '1', '-i', sp.timelinePcmPath);
   });
-  const mixIn = valid.map((_, i) => `[a${i}]`).join('');
-  filterChunks.push(
+  const mixIn = valid.map((_, i) => `[${i}:a]`).join('');
+  const filter =
     `${mixIn}amix=inputs=${valid.length}:normalize=0:dropout_transition=0,` +
-    `apad,atrim=duration=${totalSec}[mix]`,
-  );
+    `apad,atrim=duration=${totalSec}[mix]`;
 
   const mixedPath = pjoin(outDir, '_mixed.mp3');
   await runFfmpeg([
     ...inputArgs,
-    '-filter_complex', filterChunks.join(';'),
+    '-filter_complex', filter,
     '-map', '[mix]',
     '-c:a', 'libmp3lame', '-b:a', `${BITRATE}k`,
     mixedPath,

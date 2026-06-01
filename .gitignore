@@ -1,4 +1,5 @@
 node_modules/
+.a_plan
 
 # PM2 로그 (디렉토리는 .gitkeep으로 유지)
 logs/
